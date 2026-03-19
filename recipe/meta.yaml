@@ -27,6 +27,7 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - cmake >=3.18
+    - git                          # CMake FetchContent needs git to download dlpack
     - make                         # [unix]
   host:
     - python
