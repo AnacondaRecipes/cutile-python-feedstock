@@ -16,8 +16,10 @@ build:
   number: 0
   skip: true  # [osx or py<310]
   string: py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
-  ignore_run_exports:
+  # C++ extension only uses CUDA headers at build time, no runtime linkage
+  ignore_run_exports_from:
     - cuda-cudart-dev
+  ignore_run_exports:
     - cuda-version
 
 requirements:
@@ -31,6 +33,7 @@ requirements:
     - pip
     - setuptools <81
     - wheel
+    # https://github.com/NVIDIA/cutile-python/blob/v1.2.0/CMakeLists.txt#L22
     - cuda-version {{ cuda_version }}
     - cuda-cudart-dev
     - cuda-driver-dev              # [linux]
@@ -47,7 +50,7 @@ test:
     - cuda.tile
   commands:
     - pip check
-    - test -f $SP_DIR/cuda/tile/_cext*.so     # [linux]
+    - python -c "import importlib; assert importlib.import_module('cuda.tile._cext')"
   requires:
     - pip
 
