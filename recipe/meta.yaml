@@ -1,0 +1,70 @@
+{% set name = "cutile-python" %}
+{% set version = "1.2.0" %}
+{% set cuda_version = "13.1" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/NVIDIA/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: e9e9490d5fddd8ad0a9e8e28e42b826838de4ede6fdbce6552be7ce2d75df4e5
+  patches:
+    - patches/0001-Remove-nostdlib-flags-to-allow-linking-glibc.patch
+
+build:
+  number: 0
+  skip: true  # [osx or py<310]
+  string: py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
+  ignore_run_exports:
+    - cuda-cudart-dev
+    - cuda-version
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - cmake >=3.18
+    - make                         # [unix]
+  host:
+    - python
+    - pip
+    - setuptools <81
+    - wheel
+    - cuda-version {{ cuda_version }}
+    - cuda-cudart-dev
+    - cuda-driver-dev              # [linux]
+  run:
+    - python
+    - typing-extensions
+    - cuda-tileiras
+    - {{ pin_compatible("cuda-version", max_pin="x") }}
+  run_constrained:
+    - __cuda >=13.0
+
+test:
+  imports:
+    - cuda.tile
+  commands:
+    - pip check
+    - test -f $SP_DIR/cuda/tile/_cext*.so     # [linux]
+  requires:
+    - pip
+
+about:
+  home: https://github.com/NVIDIA/cutile-python
+  license: Apache-2.0
+  license_family: Apache
+  license_file: LICENSES/Apache-2.0.txt
+  summary: cuTile is a programming model for writing parallel kernels for NVIDIA GPUs
+  description: |
+    cuTile Python is a programming language for NVIDIA GPUs that generates
+    kernels based on Tile IR. It requires NVIDIA Driver r580+ and CUDA Toolkit
+    13.1+.
+  doc_url: https://docs.nvidia.com/cuda/cutile-python
+  dev_url: https://github.com/NVIDIA/cutile-python
+
+extra:
+  recipe-maintainers:
+    - conda-forge/cuda
+    - haijieg
