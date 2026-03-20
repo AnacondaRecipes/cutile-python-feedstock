@@ -8,6 +8,7 @@ elif [[ "${target_platform}" == "linux-aarch64" ]]; then
     export CUDAToolkit_ROOT="${PREFIX}/targets/sbsa-linux"
 fi
 
-# dlpack >=1.1 not available in pkgs/main; let CMake auto-fetch from GitHub
+# Use conda-provided dlpack headers
+export CUDA_TILE_CMAKE_DLPACK_PATH="${PREFIX}"
 
 ${PYTHON} -m pip install . -vv --no-deps --no-build-isolation

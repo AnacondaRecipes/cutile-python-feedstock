@@ -25,7 +25,6 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - cmake >=3.18
-    - git                          # CMake FetchContent needs git to download dlpack
     - make                         # [unix]
   host:
     - python
@@ -34,6 +33,7 @@ requirements:
     - wheel
     # https://github.com/NVIDIA/cutile-python/blob/v1.2.0/CMakeLists.txt#L30 (find_package CUDAToolkit)
     - cuda-version >={{ cuda_version }}
+    - dlpack >=1.1
     - cuda-cudart-dev
     - cuda-driver-dev              # [linux]
   run:
