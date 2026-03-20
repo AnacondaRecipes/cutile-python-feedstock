@@ -1,3 +1,7 @@
 build_parameters:
   - "--suppress-variables"
+  - "--skip-existing"
   - "--error-overlinking"
+
+# Note: upstream requires python >=3.10, <3.14
+# https://github.com/NVIDIA/cutile-python/blob/v1.2.0/pyproject.toml#L22

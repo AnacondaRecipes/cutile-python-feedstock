@@ -19,8 +19,6 @@ build:
   # C++ extension only uses CUDA headers at build time, no runtime linkage
   ignore_run_exports_from:
     - cuda-cudart-dev
-  ignore_run_exports:
-    - cuda-version
 
 requirements:
   build:
@@ -34,17 +32,15 @@ requirements:
     - pip
     - setuptools <81
     - wheel
-    # https://github.com/NVIDIA/cutile-python/blob/v1.2.0/CMakeLists.txt#L22
-    - cuda-version {{ cuda_version }}
+    # https://github.com/NVIDIA/cutile-python/blob/v1.2.0/CMakeLists.txt#L30 (find_package CUDAToolkit)
+    - cuda-version >={{ cuda_version }}
     - cuda-cudart-dev
     - cuda-driver-dev              # [linux]
   run:
     - python
     - typing-extensions
     - cuda-tileiras
-    - {{ pin_compatible("cuda-version", max_pin="x") }}
-  run_constrained:
-    - __cuda >=13.0
+    - cuda-version >={{ cuda_version }}
 
 test:
   imports:
@@ -72,3 +68,4 @@ extra:
   recipe-maintainers:
     - conda-forge/cuda
     - haijieg
+    - xkong-anaconda
