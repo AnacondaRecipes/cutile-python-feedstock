@@ -1,37 +1,54 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Bradley Dice <bdice@bradleydice.com>
-Date: Wed, 29 Jan 2025 12:00:00 -0800
-Subject: [PATCH 2/2] Remove nostdlib flags to allow linking glibc
+From: Onur Bingol <obingol@anaconda.com>
+Date: Sun, 8 Nov 2026 21:05:00 -0800
+Subject: [PATCH] Remove -nostdlib flags so the cext links against glibc
 
-The conda-forge build environment provides glibc, so we can safely
-link against it. This removes -nostdlib and -fno-builtin flags that
-conflict with conda-forge's compiler flags (e.g. -fstack-protector).
+The conda build environment provides glibc and libstdc++, so the C++
+extension can safely link against them. Upstream builds the extension
+with "-nostdlib -fno-builtin" (which also drops -DNDEBUG), and on Windows
+with "/NODEFAULTLIB /NOENTRY". Those flags conflict with conda compiler
+and linker flags (e.g. -fstack-protector) and with --error-overlinking
+checks.
 
+This patch:
+* drops ${nostdlib_flags} from the compile and link options of the
+  _cext_static, _cext and _cext_shared targets (5 places), keeping
+  ${cext_compile_flags} and ${cext_link_flags} in place;
+* replaces the MSVC link flags "/NODEFAULTLIB /NOENTRY" with an empty
+  string so the Windows build uses the normal runtime libraries;
+* keeps the -Wl,--no-undefined linker check on _cext_shared.
+
+Based on the original conda-forge patch by Bradley Dice
+<bdice@bradleydice.com>, which made the same change against v1.2.0 and
+v1.5.0. This version only rebases that change onto v1.8.0: upstream's
+cext/CMakeLists.txt gained ARM64 interlocked-function flags, the
+pynvvm.cpp and XLA FFI sources, and a different target layout, so the
+previous patch no longer applied. There is no behavioral change relative
+to the original patch.
 ---
- cext/CMakeLists.txt | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ cext/CMakeLists.txt | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
 
 diff --git a/cext/CMakeLists.txt b/cext/CMakeLists.txt
-index 7e032f5..a40b0ce 100644
 --- a/cext/CMakeLists.txt
 +++ b/cext/CMakeLists.txt
-@@ -10,8 +10,7 @@ if (MSVC)
-     # Default visibility is already hidden
-     string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-     set(cext_compile_flags /GR- /GS- /EHs- -DNDEBUG)
+@@ -15,8 +15,7 @@
+     if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+         list(APPEND cext_compile_flags /forceInterlockedFunctions-)
+     endif()
 -    # /NODEFAULTLIB and /NOENTRY to disable dependency on runtime lib msvcrt.dll
 -    set(cext_link_flags /NODEFAULTLIB /NOENTRY)
 +    set(cext_link_flags "")
- else()
-     set(cext_compile_flags -fno-exceptions -fno-rtti -fPIC -fvisibility=hidden)
-     set(cext_link_flags ${cext_compile_flags})
-@@ -36,19 +35,19 @@ add_library(_cext_static STATIC
-     tile_kernel.cpp
-     )
+     # set Py_GIL_DISABLED macro, at it is not defined automatically on Windows
+     execute_process(
+         COMMAND ${Python_EXECUTABLE} -c
+@@ -88,16 +87,16 @@
+ )
+ target_sources(_cext_static PRIVATE ${cext_generated_dir}/cext_docstrings.h)
  
 -target_compile_options(_cext_static PUBLIC ${cext_compile_flags} ${nostdlib_flags})
 +target_compile_options(_cext_static PUBLIC ${cext_compile_flags})
- target_include_directories(_cext_static PRIVATE ${cext_include_dirs})
+ target_include_directories(_cext_static PRIVATE ${cext_include_dirs} ${cext_generated_dir})
 -target_link_options(_cext_static PUBLIC ${cext_link_flags} ${nostdlib_flags})
 +target_link_options(_cext_static PUBLIC ${cext_link_flags})
  
@@ -43,13 +60,18 @@ index 7e032f5..a40b0ce 100644
 -target_compile_options(_cext PUBLIC ${cext_compile_flags} ${nostdlib_flags})
 +target_compile_options(_cext PUBLIC ${cext_compile_flags})
  target_include_directories(_cext PRIVATE ${cext_include_dirs})
- target_link_libraries(_cext PUBLIC _cext_static ${Python_LIBRARIES})
+ if (MSVC)
+     # on windows linker resolve symbols eagerly so we must explicitly provide libpython.so
+@@ -105,7 +104,7 @@
+ else()
+     target_link_libraries(_cext PUBLIC _cext_static)
+ endif()
 -target_link_options(_cext PUBLIC ${cext_link_flags} ${nostdlib_flags})
 +target_link_options(_cext PUBLIC ${cext_link_flags})
  
  set_target_properties(_cext PROPERTIES SKIP_BUILD_RPATH TRUE)
  
-@@ -65,9 +64,9 @@ endif()
+@@ -126,9 +125,9 @@
  
  add_library(_cext_shared SHARED module.cpp)
  target_link_libraries(_cext_shared _cext_static ${Python_LIBRARIES} ${asan_library})
@@ -60,7 +82,6 @@ index 7e032f5..a40b0ce 100644
 +target_link_options(_cext_shared PUBLIC ${cext_link_flags} -Wl,--no-undefined)
  
  # Tests
- 
+ function(add_test_executable)
 -- 
 2.48.1
-
