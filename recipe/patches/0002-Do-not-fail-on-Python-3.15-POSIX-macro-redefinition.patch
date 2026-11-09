@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Onur Bingol <obingol@anaconda.com>
+Date: Sun, 8 Nov 2026 22:00:00 -0800
+Subject: [PATCH 2/2] Do not fail on POSIX feature-macro redefinition with Python 3.15
+
+Python 3.15's pyconfig.h defines _POSIX_C_SOURCE and _XOPEN_SOURCE as
+202405L and 800. On Linux, the C++ standard library headers define
+_GNU_SOURCE and pull in glibc's <features.h> before Python.h, and
+<features.h> unconditionally normalizes those two macros to 200809L and
+700. pyconfig.h then redefines them, which is only a warning, but
+upstream builds with -Werror, so the build fails with:
+
+    pyconfig.h: error: "_POSIX_C_SOURCE" redefined [-Werror]
+    pyconfig.h: error: "_XOPEN_SOURCE" redefined [-Werror]
+
+The redefinition itself is harmless (the application never relies on
+either value), and the mismatch comes from the glibc sysroot used for
+conda builds, not from this project. Append -Wno-error to the extension
+compile flags so warnings remain visible without failing the build. This
+only affects the non-MSVC branch; the MSVC /WX setting is unchanged.
+---
+ cext/CMakeLists.txt | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/cext/CMakeLists.txt b/cext/CMakeLists.txt
+--- a/cext/CMakeLists.txt
++++ b/cext/CMakeLists.txt
+@@ -37,6 +37,13 @@
+     set(nostdlib_flags -nostdlib -DNDEBUG -fno-builtin)
+     # Strip the absolute path from __FILE__
+     list(APPEND cext_compile_flags "-fmacro-prefix-map=${CMAKE_SOURCE_DIR}/=")
++    # Anaconda: Python 3.15's pyconfig.h defines _POSIX_C_SOURCE and _XOPEN_SOURCE
++    # as 202405L/800, while <features.h> from the glibc sysroot normalizes them to
++    # 200809L/700. <features.h> is reached first through the C++ standard headers
++    # (which define _GNU_SOURCE), so the redefinition is reported and -Werror turns
++    # it into a hard error. The redefinition is harmless, so keep warnings visible
++    # but do not fail the build on them.
++    list(APPEND cext_compile_flags -Wno-error)
+ endif()
+ 
+ 
+-- 
+2.48.1

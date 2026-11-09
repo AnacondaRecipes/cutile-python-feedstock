@@ -11,6 +11,9 @@ source:
     sha256: 061bba5faa28bf8781a18af5c59ad019f8d3d2447c4d1908cf07c63ebaa42be1
     patches:
       - patches/0001-Remove-nostdlib-flags-to-allow-linking-glibc.patch
+      # Anaconda: Python 3.15's pyconfig.h redefines _POSIX_C_SOURCE/_XOPEN_SOURCE
+      # against glibc's <features.h>, which is fatal under upstream's -Werror.
+      - patches/0002-Do-not-fail-on-Python-3.15-POSIX-macro-redefinition.patch
   # Anaconda: the cext needs XLA FFI headers. Vendor the archive that upstream's
   # cmake/FetchXLAHeaders.cmake would otherwise download at configure time so the
   # build does not depend on network access. Revision and hash match upstream.
