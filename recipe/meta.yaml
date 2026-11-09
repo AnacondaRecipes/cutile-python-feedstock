@@ -1,5 +1,5 @@
 {% set name = "cutile-python" %}
-{% set version = "1.2.0" %}
+{% set version = "1.8.0" %}
 {% set cuda_version = "13.1" %}
 
 package:
@@ -7,14 +7,20 @@ package:
   version: {{ version }}
 
 source:
-  url: https://github.com/NVIDIA/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
-  sha256: e9e9490d5fddd8ad0a9e8e28e42b826838de4ede6fdbce6552be7ce2d75df4e5
-  patches:
-    - patches/0001-Remove-nostdlib-flags-to-allow-linking-glibc.patch
+  - url: https://github.com/NVIDIA/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
+    sha256: 061bba5faa28bf8781a18af5c59ad019f8d3d2447c4d1908cf07c63ebaa42be1
+    patches:
+      - patches/0001-Remove-nostdlib-flags-to-allow-linking-glibc.patch
+  # Anaconda: the cext needs XLA FFI headers. Vendor the archive that upstream's
+  # cmake/FetchXLAHeaders.cmake would otherwise download at configure time so the
+  # build does not depend on network access. Revision and hash match upstream.
+  - url: https://github.com/openxla/xla/archive/b6f37ab7767f428fd6f993de5e211643d47d4deb.tar.gz
+    sha256: 6a25ffe712c27468fe642c8d07f4de5601092bf31f4d1edd483eeef96b39e2d9
+    folder: xla
 
 build:
   number: 0
-  skip: true  # [osx or py<310]
+  skip: true  # [osx or py<311]
   string: py{{ CONDA_PY }}h{{ PKG_HASH }}_{{ PKG_BUILDNUM }}
   # C++ extension only uses CUDA headers at build time, no runtime linkage
   ignore_run_exports_from:
@@ -30,12 +36,14 @@ requirements:
   host:
     - python
     - pip
-    - setuptools <81
+    - setuptools >=84
     - wheel
-    # https://github.com/NVIDIA/cutile-python/blob/v1.2.0/CMakeLists.txt#L30 (find_package CUDAToolkit)
+    # https://github.com/NVIDIA/cutile-python/blob/v{{ version }}/cmake/FindCUDAToolkit.cmake
+    # (find_package(CUDAToolkit); expects cuda.h and nvvm/nvvm.h in the toolkit layout)
     - cuda-version >={{ cuda_version }}
     - dlpack >=1.1
     - cuda-cudart-dev
+    - cuda-nvvm-dev_{{ target_platform }}
     - cuda-driver-dev              # [linux]
   run:
     - python
@@ -49,6 +57,7 @@ test:
   commands:
     - pip check
     - python -c "import importlib; assert importlib.import_module('cuda.tile._cext')"
+    - python -c "import importlib.metadata; assert importlib.metadata.version('cuda-tile') == '{{ version }}'"
   requires:
     - pip
 
