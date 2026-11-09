@@ -35,6 +35,12 @@ requirements:
     - make                         # [unix]
   host:
     - python
+    # Python 3.15 on Linux moved the shared library out of `python` into
+    # `libpython` (the headers stay in `python`); CMake's FindPython Development
+    # component needs both, otherwise it reports "Could NOT find Python".
+    # On Windows the DLL and import library remain in `python` (libpython is an
+    # empty metapackage there).
+    - libpython                   # [linux and py>=315]
     - pip
     - setuptools >=84
     - wheel
@@ -43,6 +49,11 @@ requirements:
     - cuda-version >={{ cuda_version }}
     - dlpack >=1.1
     - cuda-cudart-dev
+    # nvvm.h is not shipped by cuda-nvvm-dev_<target_platform>: on Linux that
+    # metapackage only creates the targets/<arch>/nvvm symlink, while the header
+    # itself comes from cuda-nvvm-impl (nvvm/include/nvvm.h). On Windows the dev
+    # metapackage does ship Library/nvvm/include/nvvm.h.
+    - cuda-nvvm-impl               # [linux]
     - cuda-nvvm-dev_{{ target_platform }}
     - cuda-driver-dev              # [linux]
   run:
