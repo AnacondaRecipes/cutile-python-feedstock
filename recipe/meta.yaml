@@ -1,5 +1,5 @@
 {% set name = "cutile-python" %}
-{% set version = "1.8.0" %}
+{% set version = "1.8.1" %}
 {% set cuda_version = "13.1" %}
 
 package:
@@ -8,7 +8,7 @@ package:
 
 source:
   - url: https://github.com/NVIDIA/{{ name }}/archive/refs/tags/v{{ version }}.tar.gz
-    sha256: 061bba5faa28bf8781a18af5c59ad019f8d3d2447c4d1908cf07c63ebaa42be1
+    sha256: 30d34c281ccf4496c036034c1403dbbc685e61c7b9e7de1deae608c2b3125e5a
     patches:
       - patches/0001-Remove-nostdlib-flags-to-allow-linking-glibc.patch
       # Anaconda: Python 3.15's pyconfig.h redefines _POSIX_C_SOURCE/_XOPEN_SOURCE
